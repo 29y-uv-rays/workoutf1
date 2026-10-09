@@ -279,24 +279,4 @@ extension TimingEngine {
         return clean(samples, activityType: activityType)
     }
 
-    struct SampleProjection: Equatable {
-        let t: Date
-        let lat: Double
-        let lon: Double
-        let progress: Double
-    }
-
-    struct MatchResult {
-        let match: Bool
-        let score: Double
-        let reason: String?
-        let polyline: [(lat: Double, lon: Double)]
-    }
-
-    struct SectorTimingResult {
-        let lapTime: Double?
-        let sectorResults: [(index: Int, duration: Double?, reason: String?)]
-        let isValid: Bool
-        let reason: String?
-    }
 }

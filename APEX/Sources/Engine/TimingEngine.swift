@@ -61,7 +61,7 @@ struct TimingEngine: Sendable {
 
     // MARK: - Cleaning
 
-    private func clean(_ samples: [GPSSample], activityType: ActivityType) -> [GPSSample] {
+    func clean(_ samples: [GPSSample], activityType: ActivityType) -> [GPSSample] {
         let cap = config.plausibilityCap[activityType] ?? 12.0
         var kept: [GPSSample] = []
         for s in samples {
@@ -83,9 +83,9 @@ struct TimingEngine: Sendable {
 
     // MARK: - Matching
 
-    private struct MatchResult { let match: Bool; let score: Double; let reason: String?; let polyline: [(lat: Double, lon: Double)] }
+    struct MatchResult { let match: Bool; let score: Double; let reason: String?; let polyline: [(lat: Double, lon: Double)] }
 
-    private func matchRoute(samples: [GPSSample], circuit: CircuitForEngine, activityType: ActivityType) -> MatchResult? {
+    func matchRoute(samples: [GPSSample], circuit: CircuitForEngine, activityType: ActivityType) -> MatchResult? {
         guard let first = samples.first, let last = samples.last else { return nil }
         guard circuit.activityType == activityType else { return MatchResult(match: false, score: 0, reason: "Activity type mismatch", polyline: []) }
         let polyline = circuit.polyline
@@ -102,11 +102,6 @@ struct TimingEngine: Sendable {
             return MatchResult(match: false, score: 0, reason: "Start/end not near circuit", polyline: polyline)
         }
 
-        let routeLen = samples.reduce(0.0) { acc, s in
-            guard acc > 0 || true else { return acc }
-            return acc + localDistance(lat1: (acc == 0 ? s.lat : samples[samples.firstIndex(where: { _ in false }) ?? 0].lat), lon1: 0, lat2: s.lat, lon2: s.lon)
-        }
-        // simpler: compute actual route length
         var len: Double = 0
         for i in 1..<samples.count {
             len += localDistance(lat1: samples[i-1].lat, lon1: samples[i-1].lon, lat2: samples[i].lat, lon2: samples[i].lon)
@@ -138,9 +133,9 @@ struct TimingEngine: Sendable {
 
     // MARK: - Projection
 
-    private struct SampleProjection { let t: Date; let lat: Double; let lon: Double; let progress: Double }
+    struct SampleProjection: Equatable { let t: Date; let lat: Double; let lon: Double; let progress: Double }
 
-    private func projectProgress(samples: [GPSSample], polyline: [(lat: Double, lon: Double)]) -> [SampleProjection] {
+    func projectProgress(samples: [GPSSample], polyline: [(lat: Double, lon: Double)]) -> [SampleProjection] {
         guard polyline.count >= 2 else { return [] }
         let total = polylineLength(polyline)
         var out: [SampleProjection] = []
@@ -172,19 +167,16 @@ struct TimingEngine: Sendable {
             let segEnd = cum + segLen
             cum = segEnd
             if segEnd < windowStart || segStart > windowEnd { continue }
-            if let (_, _, t, _) = projectOntoSegmentVisible(pLat: lat, pLon: lon, aLat: polyline[i].lat, aLon: polyline[i].lon, bLat: polyline[i+1].lat, bLon: polyline[i+1].lon) {
+            if let (_, _, t, _) = projectOntoSegment(pLat: lat, pLon: lon, aLat: polyline[i].lat, aLon: polyline[i].lon, bLat: polyline[i+1].lat, bLon: polyline[i+1].lon) {
                 let prog = segStart + segLen * t
                 if prog < windowStart || prog > windowEnd { continue }
-                let d = localDistance(lat1: lat, lon1: lon, lat2: polyline[i].lat + (polyline[i+1].lat - polyline[i].lat) * t, lon2: polyline[i].lon + (polyline[i+1].lon - polyline[i].lon) * t)
+                let clat = polyline[i].lat + (polyline[i+1].lat - polyline[i].lat) * t
+                let clon = polyline[i].lon + (polyline[i+1].lon - polyline[i].lon) * t
+                let d = localDistance(lat1: lat, lon1: lon, lat2: clat, lon2: clon)
                 if d < bestDist { bestDist = d; bestProg = prog }
             }
         }
         return bestProg
-    }
-
-    private func projectOntoSegmentVisible(pLat: Double, pLon: Double, aLat: Double, aLon: Double, bLat: Double, bLon: Double) -> (clat: Double, clon: Double, t: Double, dist: Double)? {
-        guard let (_, _, t, _) = projectOntoSegment(pLat: pLat, pLon: pLon, aLat: aLat, aLon: aLon, bLat: bLat, bLon: bLon) else { return nil }
-        return (aLat + (bLat - aLat) * t, aLon + (bLon - aLon) * t, t, 0)
     }
 
     private func clampNonDecreasing(prog: Double, prev: Double?) -> Double {
@@ -261,9 +253,9 @@ struct TimingEngine: Sendable {
 
     // MARK: - Sector times
 
-    private struct SectorTimingResult { let lapTime: Double?; let sectorResults: [(index: Int, duration: Double?, reason: String?)]; let isValid: Bool; let reason: String? }
+    struct SectorTimingResult { let lapTime: Double?; let sectorResults: [(index: Int, duration: Double?, reason: String?)]; let isValid: Bool; let reason: String? }
 
-    private func computeSectorTimes(samples: [GPSSample], projection: [SampleProjection], circuit: CircuitForEngine, pauseIntervals: [PauseInterval]) -> SectorTimingResult {
+    func computeSectorTimes(samples: [GPSSample], projection: [SampleProjection], circuit: CircuitForEngine, pauseIntervals: [PauseInterval]) -> SectorTimingResult {
         let total = circuit.totalDistanceMeters
         let sectors = circuit.sectors
 
@@ -333,7 +325,7 @@ struct TimingEngine: Sendable {
         return SectorTimingResult(lapTime: lapMoving, sectorResults: sectorResults, isValid: true, reason: nil)
     }
 
-    private func crossingTime(for distance: Double, projection: [SampleProjection], samples: [GPSSample]) -> Date? {
+    func crossingTime(for distance: Double, projection: [SampleProjection], samples: [GPSSample]) -> Date? {
         guard projection.count >= 2 else { return nil }
         var prev: SampleProjection?
         for cur in projection {
