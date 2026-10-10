@@ -7,6 +7,9 @@ struct LapsView: View {
     @Query(sort: \Workout.startDate, order: .reverse) private var workouts: [Workout]
     @Query(sort: \Circuit.name) private var circuits: [Circuit]
     @State private var filterCircuitID: UUID?
+    @State private var filterActivity: ActivityType?
+    @State private var filterDateRange: DateRange = .allTime
+    @State private var showFilters: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -46,14 +49,6 @@ struct LapsView: View {
                     .help("Show filters")
                 }
             }
-                        Divider()
-                        ForEach(circuits) { c in Button(c.name) { filterCircuitID = c.id } }
-                    } label: {
-                        HStack(spacing: 4) { Text(filterLabel).font(.caption); Image(systemName: "line.3.horizontal.decrease.circle").font(.caption) }
-                            .foregroundStyle(Theme.text)
-                    }
-                }
-            }
         }
     }
 
@@ -75,8 +70,6 @@ struct LapsView: View {
         parts.append(filterDateRange.rawValue)
         
         return parts.joined(separator: " • ")
-    }
-        return "All"
     }
 
     private var displayedWorkouts: [Workout] {
@@ -108,101 +101,6 @@ struct LapsView: View {
             return true
         }
     }
-import SwiftUI
-import SwiftData
-
-struct LapsView: View {
-    @Environment(PersistenceController.self) private var persistence
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Workout.startDate, order: .reverse) private var workouts: [Workout]
-    @Query(sort: \Circuit.name) private var circuits: [Circuit]
-    @State private var filterCircuitID: UUID?
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                FilterControlsView(
-                    circuitID: $filterCircuitID,
-                    activity: $filterActivity,
-                    dateRange: $filterDateRange,
-                    circuits: circuits,
-                    showFilters: $showFilters
-                )
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-                .background(Theme.surface.opacity(0.3))
-
-                if displayedWorkouts.isEmpty {
-                    emptyState
-                } else {
-                    List {
-                        ForEach(displayedWorkouts) { w in LapRow(workout: w) }
-                    }
-                    .listStyle(.insetGrouped)
-                    .scrollContentBackground(.hidden)
-                    .background(Theme.background)
-                }
-            }
-            .background(Theme.background)
-            .navigationTitle("Laps")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showFilters.toggle()
-                    } label: {
-                        Image(systemName: "line.3.horizontal.decrease.circle")
-                            .font(.caption)
-                    }
-                    .help("Show filters")
-                }
-            }
-                        Divider()
-                        ForEach(circuits) { c in Button(c.name) { filterCircuitID = c.id } }
-                    } label: {
-                        HStack(spacing: 4) { Text(filterLabel).font(.caption); Image(systemName: "line.3.horizontal.decrease.circle").font(.caption) }
-                            .foregroundStyle(Theme.text)
-                    }
-                }
-            }
-        }
-    }
-
-    private var filterLabel: String {
-        var parts: [String] = []
-        
-        if let id = filterCircuitID, let c = circuits.first(where: { $0.id == id }) {
-            parts.append(c.name)
-        } else {
-            parts.append("All Circuits")
-        }
-        
-        if let activity = filterActivity {
-            parts.append(activity.displayName)
-        } else {
-            parts.append("All Activities")
-        }
-        
-        parts.append(filterDateRange.rawValue)
-        
-        return parts.joined(separator: " • ")
-    }
-        return "All"
-    }
-
-    private var displayedWorkouts: [Workout] {
-        let visible = workouts.filter { w in
-            switch w.timingStatus {
-            case .valid, .partial, .missingGPS:
-                return true
-            case .unmatched:
-                return w.circuit != nil // assigned, but the route did not line up with the circuit
-            case .pending, .needsCircuitChoice:
-                return false
-            }
-        }
-        if let id = filterCircuitID { return visible.filter { $0.circuit?.id == id } }
-        return visible
-    }
 
     private var emptyState: some View {
         VStack(spacing: 12) {
@@ -213,6 +111,34 @@ struct LapsView: View {
             Spacer()
         }
         .padding()
+    }
+}
+
+enum DateRange: String, CaseIterable, Identifiable {
+    case today = "Today"
+    case week = "This Week"
+    case month = "This Month"
+    case year = "This Year"
+    case allTime = "All Time"
+    
+    var id: String { self.rawValue }
+    
+    func contains(_ date: Date) -> Bool {
+        let calendar = Calendar.current
+        let now = Date()
+        
+        switch self {
+        case .today:
+            return calendar.isDateInToday(date)
+        case .week:
+            return calendar.isDate(date, equalTo: now, toGranularity: .weekOfYear)
+        case .month:
+            return calendar.isDate(date, equalTo: now, toGranularity: .month)
+        case .year:
+            return calendar.isDate(date, equalTo: now, toGranularity: .year)
+        case .allTime:
+            return true
+        }
     }
 }
 
