@@ -186,7 +186,11 @@ extension CLLocationCoordinate2D: @retroactive Identifiable {
 
 extension Workout {
     static func fetchValidLaps(for circuit: Circuit, modelContext: ModelContext) -> [Workout] {
-        let desc = FetchDescriptor<Workout>(predicate: #Predicate { w in w.circuit?.id == circuit.id && w.timingStatus == .valid && w.circuitVersion == circuit.version && w.algorithmVersion == TimingEngine.algorithmVersion }, sortBy: [SortDescriptor(\.startDate)])
+        let circuitID = circuit.id
+        let version = circuit.version
+        let algorithm = TimingEngine.algorithmVersion
+        let valid = TimingStatus.valid.rawValue
+        let desc = FetchDescriptor<Workout>(predicate: #Predicate { w in w.circuit?.id == circuitID && w.timingStatusRaw == valid && w.circuitVersion == version && w.algorithmVersion == algorithm }, sortBy: [SortDescriptor(\.startDate)])
         return (try? modelContext.fetch(desc)) ?? []
     }
 

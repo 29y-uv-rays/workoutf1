@@ -7,7 +7,7 @@ final class SettingsViewModel {
     private let modelContext: ModelContext
     private let persistence: PersistenceController
 
-    var healthKitStatus: HealthKitStatusView?
+    var healthKitStatus: HealthKitStatus?
     var keyStatus: KeychainStatus?
     var isSyncing = false
     var keyValidating = false
@@ -21,7 +21,13 @@ final class SettingsViewModel {
     }
 
     func refresh() {
-        healthKitStatus = HealthKitService.shared.currentStatus()
+        let status = HealthKitService.shared.currentStatus()
+        // Surface the missing-GPS guide whenever some imported workouts have no route.
+        if status.kind == .authorised {
+            let workouts = (try? modelContext.fetch(FetchDescriptor<Workout>())) ?? []
+            status.showMissingGPSGuide = workouts.contains { $0.timingStatus == .missingGPS }
+        }
+        healthKitStatus = status
         if let key = KeychainService.shared.geminiKey, !key.isEmpty {
             keyStatus = KeychainStatus(label: "Key stored", color: Theme.green)
         } else {
@@ -35,11 +41,15 @@ final class SettingsViewModel {
         guard healthKitStatus?.allowedSync == true else { return }
         isSyncing = true
         defer { isSyncing = false }
-        do {
-            _ = try await HealthKitService.shared.importSince(startDate: appState.lastSyncDate)
+        let result = await HealthKitOnboarding.importAndPersist(
+            since: appState.lastSyncDate,
+            modelContext: modelContext,
+            fileStore: persistence.fileStore
+        )
+        if result.error == nil {
             appState.lastSyncDate = Date()
-            try modelContext.save()
-        } catch {}
+            try? modelContext.save()
+        }
         refresh()
     }
 

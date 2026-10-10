@@ -67,7 +67,7 @@ final class TimingEngineTests: XCTestCase {
 
     func testRejectsWrongActivity() {
         let pts = loopPoints()
-        let circuit = makeCircuit(points: pts, isLoop: true, activityType: .run)
+        let circuit = makeCircuit(activityType: .run, points: pts, isLoop: true)
         let samples = makeSamples(points: pts, start: Date(), interval: 5.0)
         let result = engine.matchRoute(samples: samples, circuit: circuit, activityType: .walk)
         XCTAssertNotNil(result)
@@ -155,7 +155,7 @@ final class TimingEngineTests: XCTestCase {
         let proj = engine.projectProgress(samples: samples, polyline: pts)
         let result = engine.computeSectorTimes(samples: samples, projection: proj, circuit: circuit, pauseIntervals: [])
         guard let lap = result.lapTime else { XCTFail("Expected valid lap"); return }
-        let sum = result.sectorResults.compactMap(\.duration).reduce(0, +)
+        let sum = result.sectorResults.compactMap { $0.duration }.reduce(0, +)
         XCTAssertEqual(sum, lap, accuracy: 0.011, "Sector sum must equal lap time within epsilon")
     }
 
@@ -182,7 +182,14 @@ final class TimingEngineTests: XCTestCase {
         XCTAssertEqual(r1.lapTime, r2.lapTime, accuracy: 0.001)
         XCTAssertEqual(r1.sectorResults.count, r2.sectorResults.count)
         for i in 0..<r1.sectorResults.count {
-            XCTAssertEqual(r1.sectorResults[i].duration, r2.sectorResults[i].duration, accuracy: 0.001)
+            let d1 = r1.sectorResults[i].duration
+            let d2 = r2.sectorResults[i].duration
+            if let d1, let d2 {
+                XCTAssertEqual(d1, d2, accuracy: 0.001)
+            } else {
+                XCTAssertNil(d1)
+                XCTAssertNil(d2)
+            }
         }
     }
 
@@ -256,27 +263,3 @@ private func localDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Doubl
     return hypot(x, y)
 }
 
-// MARK: - Compile-time helpers for tests referencing engine internals.
-
-extension TimingEngine {
-    func matchRoute(samples: [GPSSample], circuit: CircuitForEngine, activityType: ActivityType) -> MatchResult? {
-        return matchRoute(samples: samples, circuit: circuit, activityType: activityType)
-    }
-
-    func projectProgress(samples: [GPSSample], polyline: [(lat: Double, lon: Double)]) -> [SampleProjection] {
-        return projectProgress(samples: samples, polyline: polyline)
-    }
-
-    func computeSectorTimes(samples: [GPSSample], projection: [SampleProjection], circuit: CircuitForEngine, pauseIntervals: [PauseInterval]) -> SectorTimingResult {
-        return computeSectorTimes(samples: samples, projection: projection, circuit: circuit, pauseIntervals: pauseIntervals)
-    }
-
-    func crossingTime(for distance: Double, projection: [SampleProjection], samples: [GPSSample]) -> Date? {
-        return crossingTime(for: distance, projection: projection, samples: samples)
-    }
-
-    func clean(_ samples: [GPSSample], activityType: ActivityType) -> [GPSSample] {
-        return clean(samples, activityType: activityType)
-    }
-
-}

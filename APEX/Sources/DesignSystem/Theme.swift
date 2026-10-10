@@ -70,6 +70,16 @@ enum SectorColor: String, Codable, Sendable, CaseIterable {
         case .grey:   return "○"
         }
     }
+
+    /// Non-colour indicator glyph for accessibility/legend (always visible, high-contrast shape).
+    var legendGlyph: String {
+        switch self {
+        case .purple: return "◆"
+        case .green:  return "●"
+        case .yellow: return "▲"
+        case .grey:   return "■"
+        }
+    }
 }
 
 // MARK: - Timing board fonts

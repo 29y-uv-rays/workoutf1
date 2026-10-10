@@ -163,7 +163,7 @@ struct DebugFixtureGenerator {
         var samples: [GPSSample] = []
         for i in 0..<n {
             let t = base.addingTimeInterval(Double(i) * 5.0)
-            let idx = min(points.count - 1, Int(Double(i) / Double(n) * Double(points.count - startIdx)) + startIdx).clamped(to: startIdx..<points.count)
+            let idx = min(points.count - 1, Int(Double(i) / Double(n) * Double(points.count - startIdx)) + startIdx).clamped(to: startIdx...(points.count - 1))
             let p = points[idx]
             let jLat = SeededRNG.next(in: -jitter * 0.00001...jitter * 0.00001, seed: &seed)
             let jLon = SeededRNG.next(in: -jitter * 0.00001...jitter * 0.00001, seed: &seed)
@@ -188,9 +188,8 @@ struct DebugFixtureSet {
 
 // MARK: - DebugWorkoutSource
 
-final class DebugWorkoutSource: WorkoutSource, Sendable {
+final class DebugWorkoutSource: WorkoutSource {
     private let fixtureSet: DebugFixtureSet
-    private var imported = false
 
     init(seed: UInt64 = 12345) { self.fixtureSet = DebugFixtureGenerator.generate(seed: seed) }
 
@@ -198,19 +197,10 @@ final class DebugWorkoutSource: WorkoutSource, Sendable {
 
     func requestAccess() async -> HealthKitAccessResult { .authorised }
 
-    func importAll() -> WorkoutImportStream {
-        WorkoutImportStreamImpl {
-            guard !self.imported else { return nil }
-            self.imported = true
-            let all = allWorkouts
-            let withGPS = all.filter { $0.hasGPS }.count
-            return WorkoutImportStream.Element(phase: .finished(importedCount: all.count, withGPSCount: withGPS), importedCount: all.count, withGPSCount: withGPS)
-        }
-    }
-
-    func importSince(startDate: Date?) async -> WorkoutImportResult {
+    func fetchRecords(since startDate: Date?) async throws -> [WorkoutRecord] {
         let all = allWorkouts
-        return WorkoutImportResult(importedCount: all.count, withGPSCount: all.filter { $0.hasGPS }.count, latestStartDate: all.map(\.startDate).max(), error: nil)
+        guard let startDate else { return all }
+        return all.filter { $0.startDate > startDate }
     }
 
     private var allWorkouts: [WorkoutRecord] {

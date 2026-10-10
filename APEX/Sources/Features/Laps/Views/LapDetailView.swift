@@ -49,7 +49,9 @@ struct LapDetailView: View {
         switch workout.timingStatus {
         case .missingGPS: return "No GPS route recorded for this workout — no telemetry."
         case .partial: return "Partial GPS — sector times may be incomplete."
-        case .unmatched, .pending: return "Not yet matched to a circuit."
+        case .unmatched:
+            return workout.circuit == nil ? "Not yet assigned to a circuit." : "This route did not line up with the circuit — check start/finish and direction."
+        case .pending: return "Timing has not been computed yet."
         case .valid: return ""
         case .needsCircuitChoice: return "This workout could match more than one circuit."
         }
@@ -73,7 +75,6 @@ struct LapDetailView: View {
                     }
                 }
                 .mapStyle(.standard)
-                .mapRotationTap(false)
                 .frame(height: 220)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Theme.border, lineWidth: 1))
@@ -265,7 +266,12 @@ struct LapDetailView: View {
     }
 
     private func previousLap() -> Workout? {
-        let desc = FetchDescriptor<Workout>(predicate: #Predicate { w in w.circuit?.id == circuit.id && w.timingStatus == .valid && w.circuitVersion == circuit.version && w.algorithmVersion == TimingEngine.algorithmVersion && w.startDate < workout.startDate }, sortBy: [SortDescriptor(\.startDate, order: .reverse)])
+        let circuitID = circuit.id
+        let version = circuit.version
+        let algorithm = TimingEngine.algorithmVersion
+        let valid = TimingStatus.valid.rawValue
+        let before = workout.startDate
+        let desc = FetchDescriptor<Workout>(predicate: #Predicate { w in w.circuit?.id == circuitID && w.timingStatusRaw == valid && w.circuitVersion == version && w.algorithmVersion == algorithm && w.startDate < before }, sortBy: [SortDescriptor(\.startDate, order: .reverse)])
         return (try? modelContext.fetch(desc)).flatMap { $0.first }
     }
 
@@ -274,8 +280,10 @@ struct LapDetailView: View {
         return (try? modelContext.fetch(desc)).flatMap { $0.first }
     }
 
+    @MainActor
     private func requestRaceEngineer() async {
-        await GeminiService.shared.debrief(for: workout, modelContext: modelContext)
+        let available = await RaceEngineer.requestDebrief(for: workout, modelContext: modelContext)
+        if available { Haptics.light() }
     }
 }
 
@@ -296,7 +304,7 @@ struct SectorBlock: View {
         VStack(spacing: 6) {
             HStack {
                 Text("S\(sectorIndex)").font(.sectorTag).foregroundStyle(colour.color)
-                Text(colour.glyph).font(.system(size: 11, weight: .bold, design: .default)).foregroundStyle(colour.color)
+                Text(colour.legendGlyph).font(.system(size: 11, weight: .bold, design: .default)).foregroundStyle(colour.color)
                 Spacer()
                 if let d = dur {
                     Text(TimeFormat.absolute(d)).font(.timingBoard).monospacedDigits().foregroundStyle(Theme.text)
@@ -319,5 +327,8 @@ struct SectorBlock: View {
         .background(colour.color.opacity(0.10))
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(colour.color.opacity(0.4), lineWidth: 1))
+        .onAppear { if colour == .purple { Haptics.light() } } // purple sector reveal
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Sector \(sectorIndex), \(colour.accessibilityLabel)\(dur.map { ", " + TimeFormat.absolute($0) } ?? "")")
     }
 }

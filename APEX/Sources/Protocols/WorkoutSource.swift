@@ -1,9 +1,20 @@
 import Foundation
 import CoreLocation
 
+// MARK: - Workout source
+
+/// Anything APEX can read completed workouts from (HealthKit in production, fixtures in DEBUG).
+protocol WorkoutSource: AnyObject {
+    var isHealthKitAvailable: Bool { get }
+    func requestAccess() async -> HealthKitAccessResult
+    /// Returns workouts started after `startDate` (full history when `nil`). De-duplication by
+    /// `sourceWorkoutUUID` happens in the persistence layer, not here.
+    func fetchRecords(since startDate: Date?) async throws -> [WorkoutRecord]
+}
+
 // MARK: - GPS sample
 
-struct GPSSample: Codable, Sendable, Identifiable {
+struct GPSSample: Codable, Sendable, Identifiable, Hashable {
     let id: UUID
     let t: Date
     let lat: Double
@@ -37,11 +48,12 @@ struct WorkoutRecord: Codable, Sendable, Identifiable, Hashable {
     init(id: UUID = UUID(), sourceWorkoutUUID: String, activityType: ActivityType, startDate: Date, endDate: Date, durationSeconds: Double, distanceMeters: Double, samples: [GPSSample] = [], hasRoute: Bool = false, pauseIntervals: [PauseInterval] = []) {
         self.id = id; self.sourceWorkoutUUID = sourceWorkoutUUID; self.activityType = activityType
         self.startDate = startDate; self.endDate = endDate; self.durationSeconds = durationSeconds
-        self.distanceMeters = distanceMeters; self.samples = samples; self.hasRoute = hasRoute; self.pauseIntervals = pauseIntervals
+        self.distanceMeters = distanceMeters; self.samples = samples; self.hasRoute = hasRoute
+        self.pauseIntervals = pauseIntervals
     }
 }
 
-struct PauseInterval: Codable, Sendable, Equatable {
+struct PauseInterval: Codable, Sendable, Equatable, Hashable {
     let start: Date
     let end: Date
     var duration: TimeInterval { max(0, end.timeIntervalSince(start)) }
@@ -67,46 +79,9 @@ enum HealthKitAccessResult: Sendable, Equatable {
     case error(String)
 }
 
-// MARK: - Import stream
+// MARK: - Import result
 
-struct WorkoutImportStream: Sequence, Sendable {
-    struct Element: Sendable {
-        let phase: Phase
-        let importedCount: Int
-        let withGPSCount: Int
-
-        enum Phase: Sendable, Equatable {
-            case starting
-            case importing(batchIndex: Int, totalBatches: Int?)
-            case finished(importedCount: Int, withGPSCount: Int)
-            case cancelled
-            case empty(reason: String)
-            case error(String)
-        }
-    }
-
-    typealias Iterator = IteratorImpl
-    func makeIterator() -> Iterator
-}
-
-final class WorkoutImportStreamImpl: IteratorProtocol, Sequence {
-    typealias Element = WorkoutImportStream.Element
-    private var state: WorkoutImportStream.Element?
-    private let makeNext: () -> WorkoutImportStream.Element?
-
-    init(makeNext: @escaping () -> WorkoutImportStream.Element?) {
-        self.makeNext = makeNext
-        self.state = makeNext()
-    }
-
-    func makeIterator() -> Iterator { self }
-
-    func next() -> Element? {
-        defer { state = makeNext() }
-        return state
-    }
-}
-
+/// Outcome of one import-and-persist pass. `importedCount` counts *newly inserted* workouts.
 struct WorkoutImportResult: Sendable {
     let importedCount: Int
     let withGPSCount: Int

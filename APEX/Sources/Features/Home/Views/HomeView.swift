@@ -47,7 +47,14 @@ struct HomeView: View {
                 }
             }
         }
-        .onAppear { refreshSyncText() }
+        .onAppear {
+            refreshSyncText()
+            // Auto-sync on launch, at most once every five minutes.
+            if appState.autoSync {
+                let last = appState.lastSyncDate ?? .distantPast
+                if Date().timeIntervalSince(last) > 300 { Task { await sync() } }
+            }
+        }
     }
 
     private var headerSection: some View {
@@ -147,13 +154,14 @@ struct HomeView: View {
         let col = (r?.colour ?? .grey)
         let time = r?.durationSeconds.map(TimeFormat.absolute) ?? "—"
         return HStack(spacing: 5) {
-            Text(col.glyph).font(.system(size: 10, weight: .bold, design: .default)).foregroundStyle(col.color)
+            Text(col.legendGlyph).font(.system(size: 10, weight: .bold, design: .default)).foregroundStyle(col.color)
             Text(label).font(.caption2).foregroundStyle(Theme.secondaryText)
             Text(time).font(.caption).monospacedDigits().foregroundStyle(Theme.text)
         }
         .padding(.horizontal, 8).padding(.vertical, 5)
         .background(col.color.opacity(0.12))
         .clipShape(Capsule())
+        .accessibilityLabel("Sector \(sectorIndex), \(col.accessibilityLabel), \(time)")
     }
 
     private func noTelemetryLabel(_ w: Workout) -> String {
@@ -190,7 +198,7 @@ struct HomeView: View {
             if !samples.isEmpty {
                 let first = samples.first!, last = samples.last!
                 Annotation("S/F", coordinate: CLLocationCoordinate2D(latitude: first.lat, longitude: first.lon)) { Image(systemName: "flag.fill").foregroundStyle(Theme.purple) }
-                Annotation("A", coordinate: circuit.boundaryCoordinate(at: 1.0/3.0, points: samples)) { Image(systemName: "mappin.circle.fill").foregroundStyle(Theme.yellow) }
+                Annotation("A", coordinate: circuit.boundaryCoordinate(at: 1.0/3.0, points: samples)) { Image(systemName: "mappin.circle.fill").foregroundStyle(Theme.green) }
                 Annotation("B", coordinate: circuit.boundaryCoordinate(at: 2.0/3.0, points: samples)) { Image(systemName: "mappin.circle.fill").foregroundStyle(Theme.yellow) }
                 ForEach(1...3, id: \.self) { idx in
                     let slice = sectorSlice(samples: samples, sectorIndex: idx, circuit: circuit)
@@ -296,8 +304,8 @@ struct HomeView: View {
     @MainActor
     private func requestRaceEngineer(for w: Workout) async {
         guard KeychainService.shared.hasGeminiKey else { return }
-        await GeminiService.shared.debrief(for: w, modelContext: modelContext)
-        try? await Task.sleep(for: .milliseconds(300))
+        let available = await RaceEngineer.requestDebrief(for: w, modelContext: modelContext)
+        if available { Haptics.light() }
     }
 
     // MARK: - Empty state
@@ -319,13 +327,18 @@ struct HomeView: View {
     private func sync() async {
         isRefreshing = true
         syncError = nil
-        do {
-            _ = try await HealthKitService.shared.importSince(startDate: appState.lastSyncDate)
+        let result = await HealthKitOnboarding.importAndPersist(
+            since: appState.lastSyncDate,
+            modelContext: modelContext,
+            fileStore: persistence.fileStore
+        )
+        if let message = result.error {
+            syncError = message
+        } else {
             appState.lastSyncDate = Date()
-            try modelContext.save()
+            try? modelContext.save()
             refreshSyncText()
-        } catch {
-            syncError = error.localizedDescription
+            Haptics.light() // sync completed
         }
         isRefreshing = false
     }

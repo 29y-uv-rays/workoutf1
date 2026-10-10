@@ -31,11 +31,12 @@
 		1A2B3C4D00010016 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A2B3C4D00010016 /* KeychainService.swift */; };
 		1A2B3C4D00010017 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A2B3C4D00010017 /* SettingsViewModel.swift */; };
 		1A2B3C4D00010018 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A2B3C4D00010018 /* AppDelegate.swift */; };
+		1A2B3C4D0001001B /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A2B3C4D00010036 /* Haptics.swift */; };
 		1A2B3C4D00010019 /* TimingEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A2B3C4D00010019 /* TimingEngineTests.swift */; };
 		1A2B3C4D0001001A /* PersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A2B3C4D0001001A /* PersistenceTests.swift */; };
-		2A2B3C4D0001001B /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A2B3C4D0001001B /* HealthKit.framework */; };
-		2A2B3C4D0001001C /* MapKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A2B3C4D0001001C /* MapKit.framework */; };
-		2A2B3C4D0001001D /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A2B3C4D0001001D /* CoreLocation.framework */; };
+		1A2B3C4D0001001C /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A2B3C4D0001001B /* HealthKit.framework */; };
+		1A2B3C4D0001001D /* MapKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A2B3C4D0001001C /* MapKit.framework */; };
+		1A2B3C4D0001001E /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A2B3C4D0001001D /* CoreLocation.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -63,6 +64,7 @@
 		2A2B3C4D00010016 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Services/KeychainService.swift; sourceTree = SOURCE_ROOT; };
 		2A2B3C4D00010017 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/Features/Settings/Views/SettingsViewModel.swift; sourceTree = SOURCE_ROOT; };
 		2A2B3C4D00010018 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/App/AppDelegate.swift; sourceTree = SOURCE_ROOT; };
+		2A2B3C4D00010036 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/DesignSystem/Haptics.swift; sourceTree = SOURCE_ROOT; };
 		2A2B3C4D00010019 /* TimingEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/TimingEngineTests.swift; sourceTree = SOURCE_ROOT; };
 		2A2B3C4D0001001A /* PersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tests/PersistenceTests.swift; sourceTree = SOURCE_ROOT; };
 		2A2B3C4D0001001B /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit; path = System/Library/Frameworks/HealthKit.framework; };
@@ -77,9 +79,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2A2B3C4D0001001B /* HealthKit.framework in Frameworks */,
-				2A2B3C4D0001001C /* MapKit.framework in Frameworks */,
-				2A2B3C4D0001001D /* CoreLocation.framework in Frameworks */,
+				1A2B3C4D0001001C /* HealthKit.framework in Frameworks */,
+				1A2B3C4D0001001D /* MapKit.framework in Frameworks */,
+				1A2B3C4D0001001E /* CoreLocation.framework in Frameworks */,
 			);
 			runOnlyOncePerArtifact = 0;
 		};
@@ -133,6 +135,7 @@
 			isa = PBXGroup;
 			children = (
 				2A2B3C4D00010000 /* Theme.swift */,
+				2A2B3C4D00010036 /* Haptics.swift */,
 			);
 			path = Sources/DesignSystem;
 			sourceTree = "";
@@ -393,6 +396,7 @@
 				1A2B3C4D00010016 /* KeychainService.swift in Sources */,
 				1A2B3C4D00010017 /* SettingsViewModel.swift in Sources */,
 				1A2B3C4D00010018 /* AppDelegate.swift in Sources */,
+				1A2B3C4D0001001B /* Haptics.swift in Sources */,
 			);
 			runOnlyOncePerArtifact = 0;
 		};
@@ -408,7 +412,7 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		2A2B3C4D00010030 /* Debug */ = {
+		2A2B3C4D00010040 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -448,7 +452,7 @@
 			};
 			name = Debug;
 		};
-		2A2B3C4D00010030 /* Release */ = {
+		2A2B3C4D00010041 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -488,7 +492,7 @@
 			};
 			name = Release;
 		};
-		2A2B3C4D00010031 /* Debug */ = {
+		2A2B3C4D00010044 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -502,7 +506,7 @@
 			};
 			name = Debug;
 		};
-		2A2B3C4D00010031 /* Release */ = {
+		2A2B3C4D00010045 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -516,7 +520,7 @@
 			};
 			name = Release;
 		};
-		2A2B3C4D00010033 /* Debug */ = {
+		2A2B3C4D00010046 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -556,7 +560,7 @@
 			};
 			name = Debug;
 		};
-		2A2B3C4D00010033 /* Release */ = {
+		2A2B3C4D00010047 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -610,7 +614,7 @@
 			};
 			name = Debug;
 		};
-		2A2B3C4D00010034 /* Release */ = {
+		2A2B3C4D00010042 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -641,7 +645,7 @@
 			};
 			name = Debug;
 		};
-		2A2B3C4D00010035 /* Release */ = {
+		2A2B3C4D00010043 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -664,8 +668,8 @@
 		2A2B3C4D0001002W /* Build configuration list for PBXProject "APEX" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				2A2B3C4D00010030 /* Debug */,
-				2A2B3C4D00010030 /* Release */,
+				2A2B3C4D00010040 /* Debug */,
+				2A2B3C4D00010041 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -674,7 +678,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2A2B3C4D00010034 /* Debug */,
-				2A2B3C4D00010034 /* Release */,
+				2A2B3C4D00010042 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
@@ -683,7 +687,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2A2B3C4D00010035 /* Debug */,
-				2A2B3C4D00010035 /* Release */,
+				2A2B3C4D00010043 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

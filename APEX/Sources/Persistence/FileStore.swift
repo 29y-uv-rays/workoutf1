@@ -49,9 +49,12 @@ final class FileStore: Sendable {
 
     // MARK: - Route files
 
-    func writeRouteJSON(_ samples: [GPSSample]) -> String? {
+    /// Writes a workout's route under a name derived from its source workout UUID, so
+    /// `loadRouteJSON(for: sourceWorkoutUUID)` finds it again.
+    @discardableResult
+    func writeRouteJSON(_ samples: [GPSSample], for identifier: String) -> String? {
         let file = RouteFile(samples: samples)
-        let fileName = "route-\(samples.first?.id.uuidString ?? UUID().uuidString).json"
+        let fileName = "\(identifier).json"
         let url = routesDir.appendingPathComponent(fileName)
         do {
             try JSONEncoder().encode(file).write(to: url)

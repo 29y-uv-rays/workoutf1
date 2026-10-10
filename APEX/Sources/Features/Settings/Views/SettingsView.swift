@@ -7,6 +7,7 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(filter: #Predicate<AppStateModel> { _ in true }, limit: 1) private var appStateRows: [AppStateModel]
     @State private var viewModel: SettingsViewModel?
+    @State private var showGPSGuide = false
 
     var body: some View {
         NavigationStack {
@@ -45,7 +46,11 @@ struct SettingsView: View {
                     HStack(spacing: 4) { Circle().fill(hks.kind.color).frame(width: 8, height: 8); Text(hks.kind.label).font(.caption).foregroundStyle(Theme.text) }
                 }
                 if hks.showMissingGPSGuide {
-                    Button { /* show guide inline */ } label: { Label("Missing GPS troubleshooting", systemImage: "exclamationmark.triangle") }.foregroundStyle(Theme.text)
+                    DisclosureGroup("Missing GPS troubleshooting", isExpanded: $showGPSGuide) {
+                        missingGPSGuide
+                    }
+                    .foregroundStyle(Theme.text)
+                    .tint(Theme.purple)
                 }
                 if hks.needsAuth {
                     Button("Open Health Settings") { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } }.foregroundStyle(Theme.text)
@@ -55,8 +60,8 @@ struct SettingsView: View {
                 }
             } else {
                 HStack { Text("HealthKit").foregroundStyle(Theme.secondaryText); Spacer(); Text("Unavailable").foregroundStyle(Theme.grey) }
-            }
-        } header: { Text("Health") }
+            }        } header: { Text("Health") }
+        
     }
 
     private var geminiSection: some View {
@@ -93,7 +98,7 @@ struct SettingsView: View {
 
     private var syncSection: some View {
         Section {
-            HStack { Text("Auto-sync on launch"); Spacer(); Toggle("Auto-sync", isOn: .constant(true)).tint(Theme.purple).labelsHidden() }.foregroundStyle(Theme.text)
+            HStack { Text("Auto-sync on launch"); Spacer(); Toggle("Auto-sync", isOn: autoSyncBinding).tint(Theme.purple).labelsHidden() }.foregroundStyle(Theme.text)
             Button { Task { await viewModel?.manualSync() } } label: { if viewModel?.isSyncing == true { ProgressView() } else { Label("Sync now", systemImage: "arrow.triangle.2.circlepath") } }.foregroundStyle(Theme.text).disabled(viewModel?.isSyncing == true)
         } header: { Text("Sync") } footer: { Text("Sync is best-effort. iOS decides when background work runs; open APEX to refresh.").font(.caption).foregroundStyle(Theme.secondaryText) }
     }
@@ -107,8 +112,46 @@ struct SettingsView: View {
     private var aboutSection: some View {
         Section {
             HStack { Text("Version"); Spacer(); Text("1.0").foregroundStyle(Theme.secondaryText) }
-            DisclosureGroup { Text("Missing GPS troubleshooting guide content.").font(.caption).foregroundStyle(Theme.secondaryText) } label: { Label("Missing GPS guide", systemImage: "questionmark.circle") }
+            DisclosureGroup("Missing GPS guide", isExpanded: .constant(false)) {
+                missingGPSGuide
+            } label: { Label("Missing GPS guide", systemImage: "questionmark.circle") }
         } header: { Text("About") }
+    }
+
+    private var autoSyncBinding: Binding<Bool> {
+        Binding(
+            get: { appStateRows.first?.autoSync ?? true },
+            set: { value in
+                appStateRows.first?.autoSync = value
+                try? modelContext.save()
+            }
+        )
+    }
+
+    // MARK: - Missing GPS guide
+
+    private var missingGPSGuide: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            guideStep("1", "Record outdoors", "Indoor and treadmill sessions have no GPS route. Record the workout outside, or on a watch with GPS, so Apple Health stores a route.")
+            guideStep("2", "Turn on Location Services for workouts", "Settings → Privacy & Security → Location Services → Health → Workout → While Using the App. Enable Precise Location for the best accuracy.")
+            guideStep("3", "Let the recording app save the route", "Some third-party apps log workouts without writing a route to Apple Health. APEX can only time laps on routes Health actually stores.")
+            guideStep("4", "Confirm the workout has a route", "In Apple Health open the workout → Workout Routes. If no route image appears, APEX shows NO TELEMETRY for that session.")
+            guideStep("5", "Re-sync", "Pull to refresh on Home, or tap Sync now here. Workouts that gain a route are picked up automatically.")
+            Text("APEX never records GPS itself and never writes to Apple Health.").font(.caption2).foregroundStyle(Theme.grey)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func guideStep(_ number: String, _ title: String, _ body: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text(number).font(.caption.weight(.bold)).foregroundStyle(Theme.purple).frame(width: 20, height: 20)
+                .background(Circle().fill(Theme.purple.opacity(0.18)))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.subheadline).foregroundStyle(Theme.text)
+                Text(body).font(.caption).foregroundStyle(Theme.secondaryText)
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -118,3 +161,4 @@ struct KeychainStatus: Sendable {
     let label: String
     let color: Color
 }
+

@@ -4,6 +4,7 @@ import SwiftData
 struct OnboardingView: View {
     @Environment(PersistenceController.self) private var persistence
     @Environment(\.modelContext) private var modelContext
+    @Query(filter: #Predicate<AppStateModel> { _ in true }, limit: 1) private var appStateRows: [AppStateModel]
     @State private var step: Step = .welcome
     @State private var authResult: HealthKitAccessResult = .notAvailable
     @State private var importPhase: ImportPhase = .idle
@@ -101,7 +102,7 @@ struct OnboardingView: View {
                 }
             }
             Spacer()
-            if case .done = importPhase || case .empty = importPhase {
+            if isImportFinished {
                 Button("Continue") { completeOnboarding() }.buttonStyle(.borderedProminent).tint(Theme.purple).padding(.bottom, 32)
             } else if case .error = importPhase {
                 Button("Retry") { Task { await runImport() } }.buttonStyle(.borderedProminent).tint(Theme.purple).padding(.bottom, 32)
@@ -154,24 +155,27 @@ struct OnboardingView: View {
 
     @MainActor
     private func runImport() async {
-        importPhase = .idle
-        do {
-            let stream = HealthKitOnboarding.startImport()
-            for el in stream {
-                switch el.phase {
-                case .starting: importPhase = .starting
-                case .importing(let bi, let total): importPhase = .inProgress(batchIndex: bi, total: total); importedCount = el.importedCount; withGPSCount = el.withGPSCount
-                case .finished(let imp, let gps): importedCount = imp; withGPSCount = gps; importPhase = .done(imported: imp, withGPS: gps)
-                case .empty(let reason): importPhase = .empty(reason: reason)
-                case .error(let msg): importPhase = .error(msg); error = msg
-                case .cancelled: break
-                @unknown default: break
-                }
-            }
-        } catch {
-            importPhase = .error(error.localizedDescription)
+        importPhase = .starting
+        importedCount = 0
+        withGPSCount = 0
+        let result = await HealthKitOnboarding.importAndPersist(since: nil, modelContext: modelContext, fileStore: persistence.fileStore)
+        if let message = result.error {
+            error = message
+            importPhase = .error(message)
+        } else if result.importedCount == 0 {
+            importPhase = .empty(reason: "No workouts were found in Apple Health.")
+        } else {
+            importedCount = result.importedCount
+            withGPSCount = result.withGPSCount
+            importPhase = .done(imported: result.importedCount, withGPS: result.withGPSCount)
         }
-        if case .done = importPhase { step = .result } else if case .empty = importPhase { step = .result }
+        if isImportFinished { step = .result }
+    }
+
+    private var isImportFinished: Bool {
+        if case .done = importPhase { return true }
+        if case .empty = importPhase { return true }
+        return false
     }
 
     private func completeOnboarding() {

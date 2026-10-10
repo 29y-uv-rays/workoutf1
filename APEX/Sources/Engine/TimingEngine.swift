@@ -38,7 +38,9 @@ struct TimingEngine: Sendable {
         guard cleaned.count >= config.minSamples else {
             return LapAnalysisResult(lapTime: nil, lapColour: nil, sectorResults: [], isValid: false, reason: "Too few GPS samples after cleaning", matchScore: 0)
         }
-        guard let match = matchRoute(samples: cleaned, circuit: input.circuit, activityType: input.activityType) else {
+        let match = matchRoute(samples: cleaned, circuit: input.circuit, activityType: input.activityType)
+            ?? MatchResult(match: false, score: 0, reason: "No route match", polyline: [])
+        guard match.match else {
             return LapAnalysisResult(lapTime: nil, lapColour: nil, sectorResults: [], isValid: false, reason: match.reason ?? "No route match", matchScore: 0)
         }
         let projection = projectProgress(samples: cleaned, polyline: match.polyline)
@@ -261,8 +263,8 @@ struct TimingEngine: Sendable {
 
         let boundaries: [(Int, Double)] = [
             (0, 0),
-            (1, sectors[safe: 0].endDistanceMeters ?? sectors.first(where: { $0.index == 1 })?.endDistanceMeters ?? 0),
-            (2, sectors[safe: 1].endDistanceMeters ?? sectors.first(where: { $0.index == 2 })?.endDistanceMeters ?? total),
+            (1, sectors.first(where: { $0.index == 1 })?.endDistanceMeters ?? total / 3),
+            (2, sectors.first(where: { $0.index == 2 })?.endDistanceMeters ?? total * 2 / 3),
             (3, total),
         ]
 
@@ -317,7 +319,7 @@ struct TimingEngine: Sendable {
             }
         }
 
-        let sum = sectorResults.compactMap(\.duration).reduce(0, +)
+        let sum = sectorResults.compactMap { $0.duration }.reduce(0, +)
         if abs(sum - lapMoving) > config.epsilon {
             return SectorTimingResult(lapTime: lapMoving, sectorResults: sectorResults, isValid: false, reason: "Sector times do not sum to lap time (diff \(String(format: "%.2f", abs(sum - lapMoving)))s)")
         }
@@ -353,13 +355,5 @@ struct TimingEngine: Sendable {
             if !tooSoon { result.append(c) }
         }
         return result
-    }
-}
-
-// MARK: - Subscript helper
-
-extension Array {
-    subscript safe index: Int -> Element? {
-        get { indices.contains(index) ? self[index] : nil }
     }
 }

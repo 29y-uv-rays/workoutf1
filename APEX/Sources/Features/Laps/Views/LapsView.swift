@@ -54,9 +54,18 @@ struct LapsView: View {
     }
 
     private var displayedWorkouts: [Workout] {
-        let valid = workouts.filter { $0.timingStatus == .valid || $0.timingStatus == .partial || $0.timingStatus == .missingGPS }
-        if let id = filterCircuitID { return valid.filter { $0.circuit?.id == id } }
-        return valid
+        let visible = workouts.filter { w in
+            switch w.timingStatus {
+            case .valid, .partial, .missingGPS:
+                return true
+            case .unmatched:
+                return w.circuit != nil // assigned, but the route did not line up with the circuit
+            case .pending, .needsCircuitChoice:
+                return false
+            }
+        }
+        if let id = filterCircuitID { return visible.filter { $0.circuit?.id == id } }
+        return visible
     }
 
     private var emptyState: some View {
@@ -106,7 +115,7 @@ struct LapRow: View {
                     Text(statusBadgeText).font(.caption).fontWeight(.medium).foregroundStyle(Theme.grey)
                 }
                 if let c = workout.lapColour {
-                    Text(c.glyph).font(.system(size: 9, weight: .bold)).foregroundStyle(c.color)
+                    Text(c.legendGlyph).font(.system(size: 9, weight: .bold)).foregroundStyle(c.color).accessibilityLabel(c.accessibilityLabel)
                 }
             }
         }
@@ -117,7 +126,7 @@ struct LapRow: View {
         let r = sectorResult(for: sectorIndex)
         let col = (r?.colour ?? .grey)
         if let d = r?.durationSeconds {
-            return AnyView(HStack(spacing: 2) { Text(col.glyph).font(.system(size: 8, weight: .bold)).foregroundStyle(col.color); Text(TimeFormat.totalSeconds(d)).font(.caption2).monospacedDigits().foregroundStyle(col.color) })
+            return AnyView(HStack(spacing: 2) { Text(col.legendGlyph).font(.system(size: 8, weight: .bold)).foregroundStyle(col.color); Text(TimeFormat.totalSeconds(d)).font(.caption2).monospacedDigits().foregroundStyle(col.color) }.accessibilityLabel("Sector \(sectorIndex), \(col.accessibilityLabel), \(TimeFormat.totalSeconds(d))"))
         } else {
             return AnyView(Circle().fill(Theme.grey.opacity(0.3)).frame(width: 12, height: 12))
         }
@@ -127,7 +136,8 @@ struct LapRow: View {
         switch workout.timingStatus {
         case .missingGPS: return "NO TELEMETRY"
         case .partial: return "PARTIAL"
-        case .unmatched, .pending: return "—"
+        case .unmatched: return "NO MATCH"
+        case .pending: return "—"
         case .valid: return "—"
         case .needsCircuitChoice: return "CHOOSE"
         }

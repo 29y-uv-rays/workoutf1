@@ -64,11 +64,9 @@ struct DebugSeedScreen: View {
             try? ctx.save()
             let generator = DebugWorkoutSource(seed: 12345)
             for w in generator.asWorkouts {
-                let model = Workout(sourceWorkoutUUID: w.sourceWorkoutUUID, activityType: w.activityType, startDate: w.startDate, endDate: w.endDate, durationSeconds: w.durationSeconds, distanceMeters: w.distanceMeters, routeFile: nil, timingStatus: w.hasGPS ? .pending : .missingGPS, lapTimeSeconds: nil, lapColour: nil, circuitVersion: 0, algorithmVersion: TimingEngine.algorithmVersion, circuit: nil)
+                let routeFile = w.hasGPS ? persistence.fileStore.writeRouteJSON(w.samples, for: w.sourceWorkoutUUID) : nil
+                let model = Workout(sourceWorkoutUUID: w.sourceWorkoutUUID, activityType: w.activityType, startDate: w.startDate, endDate: w.endDate, durationSeconds: w.durationSeconds, distanceMeters: w.distanceMeters, routeFile: routeFile, timingStatus: routeFile != nil ? .pending : .missingGPS, lapTimeSeconds: nil, lapColour: nil, circuitVersion: 0, algorithmVersion: TimingEngine.algorithmVersion, circuit: nil)
                 ctx.insert(model)
-                if w.hasGPS {
-                    _ = persistence.fileStore.writeRouteJSON(w.samples)
-                }
             }
             try ctx.save()
             count = generator.asWorkouts.count
@@ -85,11 +83,16 @@ struct DebugSeedScreen: View {
             status = .error("No GPS workout to create a circuit from."); return
         }
         creating = true
-        guard let routeFile = persistence.fileStore.writeRouteJSON(first.samples) else {
-            status = .error("Could not write route file."); creating = false; return
+        guard let geometryFile = persistence.fileStore.writeCircuitPolyline(
+            first.samples.map { (lat: $0.lat, lon: $0.lon) },
+            distanceMeters: first.distanceMeters,
+            activityType: first.activityType,
+            isLoop: true
+        ) else {
+            status = .error("Could not write circuit geometry file."); creating = false; return
         }
         let totalDist = first.distanceMeters
-        let circuit = Circuit(name: circuitName.isEmpty ? "The Park Loop" : circuitName, activityType: first.activityType, geometryFile: routeFile, totalDistanceMeters: totalDist, isLoop: true, originWorkoutUUID: first.sourceWorkoutUUID)
+        let circuit = Circuit(name: circuitName.isEmpty ? "The Park Loop" : circuitName, activityType: first.activityType, geometryFile: geometryFile, totalDistanceMeters: totalDist, isLoop: true, originWorkoutUUID: first.sourceWorkoutUUID)
         let ctx = persistence.container.mainContext
         ctx.insert(circuit)
         if let w = try? ctx.fetch(FetchDescriptor<Workout>()).first(where: { $0.sourceWorkoutUUID == first.sourceWorkoutUUID }) {

@@ -72,12 +72,16 @@ struct CircuitRow: View {
     }
 
     private func lapCount(_ c: Circuit) -> Int {
-        let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.circuit?.id == c.id && $0.timingStatus == .valid })
+        let circuitID = c.id
+        let valid = TimingStatus.valid.rawValue
+        let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.circuit?.id == circuitID && $0.timingStatusRaw == valid })
         return (try? persistence.container.mainContext.fetch(desc).count) ?? 0
     }
 
     private func bestLapTime(_ c: Circuit) -> Double? {
-        let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.circuit?.id == c.id && $0.timingStatus == .valid && $0.lapTimeSeconds != nil })
+        let circuitID = c.id
+        let valid = TimingStatus.valid.rawValue
+        let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.circuit?.id == circuitID && $0.timingStatusRaw == valid && $0.lapTimeSeconds != nil })
         return (try? persistence.container.mainContext.fetch(desc)).flatMap { $0.compactMap(\.lapTimeSeconds).min() }
     }
 }
@@ -93,7 +97,7 @@ struct UnassignedRow: View {
                     Text("•").foregroundStyle(Theme.secondaryText)
                     Text(String(format: "%.2f km", workout.distanceMeters / 1000.0)).font(.caption).foregroundStyle(Theme.secondaryText)
                 }
-                if !workout.hasGPS { Text("No GPS route").font(.caption2).foregroundStyle(Theme.grey) }
+                if workout.routeFile == nil { Text("No GPS route").font(.caption2).foregroundStyle(Theme.grey) }
             }
             Spacer()
             Image(systemName: "plus.circle").foregroundStyle(Theme.purple)

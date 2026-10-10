@@ -62,11 +62,13 @@ final class AppStateModel {
     var healthKitAnchor: Data?
     var lastSyncDate: Date?
     var onboardingComplete: Bool
+    var autoSync: Bool
 
-    init(id: UUID = UUID(), healthKitAnchor: Data? = nil, lastSyncDate: Date? = nil, onboardingComplete: Bool = false) {
+    init(id: UUID = UUID(), healthKitAnchor: Data? = nil, lastSyncDate: Date? = nil, onboardingComplete: Bool = false, autoSync: Bool = true) {
         self.id = id
         self.healthKitAnchor = healthKitAnchor
         self.lastSyncDate = lastSyncDate
         self.onboardingComplete = onboardingComplete
+        self.autoSync = autoSync
     }
 }

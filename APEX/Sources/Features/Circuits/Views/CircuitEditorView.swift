@@ -76,24 +76,30 @@ struct CircuitEditorView: View {
     // MARK: - Map
 
     private var sectorMap: some View {
-        Map {
+        Group {
             if samples.isEmpty {
-                RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.surface).overlay(Text("No route").foregroundStyle(Theme.secondaryText))
-            } else {
-                let first = samples.first!
-                let last = samples.last!
-                Annotation("S/F", coordinate: CLLocationCoordinate2D(latitude: first.lat, longitude: first.lon)) { Image(systemName: "flag.fill").foregroundStyle(Theme.purple).font(.title3) }
-                Annotation("A", coordinate: coordinateForFraction(fracA)) { Image(systemName: "mappin.circle.fill").foregroundStyle(SectorColor.green.color).font(.title3) }
-                Annotation("B", coordinate: coordinateForFraction(fracB)) { Image(systemName: "mappin.circle.fill").foregroundStyle(SectorColor.yellow.color).font(.title3) }
-                ForEach(1...3, id: \.self) { idx in
-                    let slice = sectorSlice(for: idx)
-                    if slice.count > 1 { MapPolyline(coordinates: slice).stroke(sectorColor(for: idx), lineWidth: 4) }
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.surface)
+                    VStack(spacing: 6) {
+                        Image(systemName: "map").font(.title2).foregroundStyle(Theme.secondaryText)
+                        Text("No route").font(.subheadline).foregroundStyle(Theme.secondaryText)
+                    }
                 }
-                if samples.count > 1 { MapPolyline(coordinates: samples.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) }).stroke(Theme.mapRouteLine.opacity(0.5), lineWidth: 2) }
+            } else {
+                Map {
+                    let first = samples.first!
+                    Annotation("S/F", coordinate: CLLocationCoordinate2D(latitude: first.lat, longitude: first.lon)) { Image(systemName: "flag.fill").foregroundStyle(Theme.purple).font(.title3) }
+                    Annotation("A", coordinate: coordinateForFraction(fracA)) { Image(systemName: "mappin.circle.fill").foregroundStyle(SectorColor.green.color).font(.title3) }
+                    Annotation("B", coordinate: coordinateForFraction(fracB)) { Image(systemName: "mappin.circle.fill").foregroundStyle(SectorColor.yellow.color).font(.title3) }
+                    ForEach(1...3, id: \.self) { idx in
+                        let slice = sectorSlice(for: idx)
+                        if slice.count > 1 { MapPolyline(coordinates: slice).stroke(sectorColor(for: idx), lineWidth: 4) }
+                    }
+                    if samples.count > 1 { MapPolyline(coordinates: samples.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) }).stroke(Theme.mapRouteLine.opacity(0.5), lineWidth: 2) }
+                }
+                .mapStyle(.standard)
             }
         }
-        .mapStyle(.standard)
-        .mapRotationTap(false)
     }
 
     private func sectorSlice(for idx: Int) -> [CLLocationCoordinate2D] {
@@ -183,15 +189,20 @@ struct CircuitEditorView: View {
         defer { saving = false }
         do {
             let geometryFile: String
-            if let existing = workout.circuit, let existingFile = existing.geometryFile {
-                geometryFile = existingFile
+            if let existing = workout.circuit {
+                geometryFile = existing.geometryFile
             } else {
                 guard let routeSamples = persistence.fileStore.loadRouteSamples(for: workout.sourceWorkoutUUID) else {
                     savingError = "No route samples found."
                     return
                 }
-                guard let written = persistence.fileStore.writeRouteJSON(routeSamples) else {
-                    savingError = "Could not write route file."
+                guard let written = persistence.fileStore.writeCircuitPolyline(
+                    routeSamples.map { (lat: $0.lat, lon: $0.lon) },
+                    distanceMeters: totalDist,
+                    activityType: activityType,
+                    isLoop: true
+                ) else {
+                    savingError = "Could not write circuit geometry file."
                     return
                 }
                 geometryFile = written
