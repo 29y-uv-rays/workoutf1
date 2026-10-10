@@ -13,7 +13,7 @@ let package = Package(
         )
     ],
     dependencies: [
-        .package(url: "https://github.com/i-schuetz/SwiftCharts.git", from: "0.6.5")
+        .package(url: "https://github.com/i-schuetz/SwiftCharts.git", .upToNextMajor(from: "0.6.5"))
     ],
     targets: [
         .target(
