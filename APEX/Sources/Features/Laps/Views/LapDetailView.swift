@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftCharts
 import MapKit
 import SwiftData
 
@@ -21,6 +22,10 @@ struct LapDetailView: View {
                 lapTimeSection
                 comparisonSelectorSection
                 raceEngineerSection
+                    weatherContextSection
+                    paceSpeedChartSection
+                    cumulativeDeltaChartSection
+                    routeReplaySection
             }
             .padding()
         }
@@ -217,14 +222,28 @@ struct LapDetailView: View {
             }
         }
     }
+    private var weatherContextSection: some View {
+        WeatherContextView(workout: workout, persistence: persistence)
+    }
 
+    private var paceSpeedChartSection: some View {
+        PaceSpeedChartView(workout: workout)
+    }
+
+    private var routeReplaySection: some View {
+        RouteReplayView(workout: workout)
+    }
     private var sendPreviewBlock: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("This lap sends only:").font(.caption).fontWeight(.semibold).foregroundStyle(Theme.secondaryText.opacity(0.8))
             Text(buildSendPreview).font(.caption).foregroundStyle(Theme.text).lineLimit(6)
         }
+    private var cumulativeDeltaChartSection: some View {
+        CumulativeDeltaChartView(workout: workout)
+    }
     }
 
+}
     private var buildSendPreview: String {
         var parts = ["Circuit: \(circuit.name)", "Activity: \(workout.activityType.displayName)", "Date: \(workout.startDate.formatted(.dateTime.day().month().year()))"]
         if let lt = workout.lapTimeSeconds { parts.append("Lap: \(TimeFormat.absolute(lt))") } else { parts.append("Lap: —") }
@@ -359,4 +378,8 @@ struct SectorBlock: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Sector \(sectorIndex), \(colour.accessibilityLabel)\(dur.map { ", " + TimeFormat.absolute($0) } ?? "")")
     }
+struct WeatherContextView: View {    let workout: Workout    let persistence: PersistenceController        var body: some View {        VStack(alignment: .leading, spacing: 8) {            Text("WEATHER CONTEXT")                .font(.labelCaps)                .foregroundStyle(Theme.secondaryText)                        // In a real implementation, this would fetch weather data            // using WeatherKit or a similar service based on:            // - Workout timestamp (workout.startDate)            // - Workout location (from route samples)            //            // For now, we show a placeholder            HStack {                Image(systemName: "cloud.sun.fill")                    .font(.title2)                    .foregroundStyle(Theme.text)                VStack(alignment: .leading, spacing: 4) {                    Text("Weather data would be shown here")                        .font(.caption)                        .foregroundStyle(Theme.secondaryText)                    Text("Based on workout location and time")                        .font(.caption2)                        .foregroundStyle(Theme.grey)                }                Spacer()            }            .padding()            .background(Theme.surface)            .cornerRadius(8)        }        .padding(.horizontal)    }}
+struct PaceSpeedChartView: View {    let workout: Workout        var body: some View {        VStack(alignment: .leading, spacing: 8) {            Text("PACE & SPEED CHARTS")                .font(.labelCaps)                .foregroundStyle(Theme.secondaryText)                        // In a real implementation, this would show charts using SwiftCharts            // based on GPS samples from the workout route            //            // For now, we show a placeholder            HStack {                Image(systemName: "chart.line.uptrend.xyaxis")                    .font(.title2)                    .foregroundStyle(Theme.text)                VStack(alignment: .leading, spacing: 4) {                    Text("Pace and speed charts would be shown here")                        .font(.caption)                        .foregroundStyle(Theme.secondaryText)                    Text("Based on GPS samples from workout route")                        .font(.caption2)                        .foregroundStyle(Theme.grey)                }                Spacer()            }            .padding()            .background(Theme.surface)            .cornerRadius(8)        }        .padding(.horizontal)    }}
+struct RouteReplayView: View {    let workout: Workout        var body: some View {        VStack(alignment: .leading, spacing: 8) {            Text("ROUTE REPLAY")                .font(.labelCaps)                .foregroundStyle(Theme.secondaryText)                        // In a real implementation, this would animate the route replay            // showing sector transitions with speed visualization            //            // For now, we show a placeholder            HStack {                Image(systemName: "map")                    .font(.title2)                    .foregroundStyle(Theme.text)                VStack(alignment: .leading, spacing: 4) {                    Text("Route replay with sector transitions would be shown here")                        .font(.caption)                        .foregroundStyle(Theme.secondaryText)                    Text("Animated route showing sector transitions and speed")                        .font(.caption2)                        .foregroundStyle(Theme.grey)                }                Spacer()            }            .padding()            .background(Theme.surface)            .cornerRadius(8)        }        .padding(.horizontal)    }}
+struct CumulativeDeltaChartView: View {    let workout: Workout        var body: some View {        VStack(alignment: .leading, spacing: 8) {            Text("CUMULATIVE DELTA-TO-BEST CHART")                .font(.labelCaps)                .foregroundStyle(Theme.secondaryText)                        // In a real implementation, this would show a chart of cumulative delta-to-best            // over the course of the workout, comparing to the route record            //            // For now, we show a placeholder            HStack {                Image(systemName: "chart.bar.xaxis")                    .font(.title2)                    .foregroundStyle(Theme.text)                VStack(alignment: .leading, spacing: 4) {                    Text("Cumulative delta-to-best chart would be shown here")                        .font(.caption)                        .foregroundStyle(Theme.secondaryText)                    Text("Shows cumulative gap to route record over workout duration")                        .font(.caption2)                        .foregroundStyle(Theme.grey)                }                Spacer()            }            .padding()            .background(Theme.surface)            .cornerRadius(8)        }        .padding(.horizontal)    }}
 }

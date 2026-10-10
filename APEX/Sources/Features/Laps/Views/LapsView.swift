@@ -11,14 +11,16 @@ struct LapsView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                Picker("Circuit", selection: $filterCircuitID) {
-                    Text("All").tag(nil as UUID?)
-                    ForEach(circuits) { c in Text(c.name).tag(c.id as UUID?) }
-                }
-                .pickerStyle(.menu)
-                .tint(Theme.text)
+                FilterControlsView(
+                    circuitID: $filterCircuitID,
+                    activity: $filterActivity,
+                    dateRange: $filterDateRange,
+                    circuits: circuits,
+                    showFilters: $showFilters
+                )
                 .padding(.horizontal)
                 .padding(.vertical, 8)
+                .background(Theme.surface.opacity(0.3))
 
                 if displayedWorkouts.isEmpty {
                     emptyState
@@ -35,8 +37,15 @@ struct LapsView: View {
             .navigationTitle("Laps")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button("All circuits") { filterCircuitID = nil }
+                    Button {
+                        showFilters.toggle()
+                    } label: {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .font(.caption)
+                    }
+                    .help("Show filters")
+                }
+            }
                         Divider()
                         ForEach(circuits) { c in Button(c.name) { filterCircuitID = c.id } }
                     } label: {
@@ -49,7 +58,134 @@ struct LapsView: View {
     }
 
     private var filterLabel: String {
-        if let id = filterCircuitID, let c = circuits.first(where: { $0.id == id }) { return c.name }
+        var parts: [String] = []
+        
+        if let id = filterCircuitID, let c = circuits.first(where: { $0.id == id }) {
+            parts.append(c.name)
+        } else {
+            parts.append("All Circuits")
+        }
+        
+        if let activity = filterActivity {
+            parts.append(activity.displayName)
+        } else {
+            parts.append("All Activities")
+        }
+        
+        parts.append(filterDateRange.rawValue)
+        
+        return parts.joined(separator: " • ")
+    }
+        return "All"
+    }
+
+    private var displayedWorkouts: [Workout] {
+        let visible = workouts.filter { w in
+            switch w.timingStatus {
+            case .valid, .partial, .missingGPS:
+                return true
+            case .unmatched:
+                return w.circuit != nil // assigned, but the route did not line up with the circuit
+            case .pending, .needsCircuitChoice:
+                return false
+            }
+        }
+        
+        return visible.filter { workout in
+            // Circuit filter
+            if let circuitID = filterCircuitID {
+                guard workout.circuit?.id == circuitID else { return false }
+            }
+            
+            // Activity filter
+            if let activity = filterActivity {
+                guard workout.activityType == activity else { return false }
+            }
+            
+            // Date range filter
+            guard filterDateRange.contains(workout.startDate) else { return false }
+            
+            return true
+        }
+    }
+import SwiftUI
+import SwiftData
+
+struct LapsView: View {
+    @Environment(PersistenceController.self) private var persistence
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Workout.startDate, order: .reverse) private var workouts: [Workout]
+    @Query(sort: \Circuit.name) private var circuits: [Circuit]
+    @State private var filterCircuitID: UUID?
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                FilterControlsView(
+                    circuitID: $filterCircuitID,
+                    activity: $filterActivity,
+                    dateRange: $filterDateRange,
+                    circuits: circuits,
+                    showFilters: $showFilters
+                )
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(Theme.surface.opacity(0.3))
+
+                if displayedWorkouts.isEmpty {
+                    emptyState
+                } else {
+                    List {
+                        ForEach(displayedWorkouts) { w in LapRow(workout: w) }
+                    }
+                    .listStyle(.insetGrouped)
+                    .scrollContentBackground(.hidden)
+                    .background(Theme.background)
+                }
+            }
+            .background(Theme.background)
+            .navigationTitle("Laps")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showFilters.toggle()
+                    } label: {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .font(.caption)
+                    }
+                    .help("Show filters")
+                }
+            }
+                        Divider()
+                        ForEach(circuits) { c in Button(c.name) { filterCircuitID = c.id } }
+                    } label: {
+                        HStack(spacing: 4) { Text(filterLabel).font(.caption); Image(systemName: "line.3.horizontal.decrease.circle").font(.caption) }
+                            .foregroundStyle(Theme.text)
+                    }
+                }
+            }
+        }
+    }
+
+    private var filterLabel: String {
+        var parts: [String] = []
+        
+        if let id = filterCircuitID, let c = circuits.first(where: { $0.id == id }) {
+            parts.append(c.name)
+        } else {
+            parts.append("All Circuits")
+        }
+        
+        if let activity = filterActivity {
+            parts.append(activity.displayName)
+        } else {
+            parts.append("All Activities")
+        }
+        
+        parts.append(filterDateRange.rawValue)
+        
+        return parts.joined(separator: " • ")
+    }
         return "All"
     }
 
@@ -151,5 +287,81 @@ struct LapRow: View {
             }
         )
         return (try? modelContext.fetch(desc)).flatMap { $0.first }
+    }
+}
+
+import SwiftUI
+
+struct FilterControlsView: View {
+    @Binding var circuitID: UUID?
+    @Binding var activity: ActivityType?
+    @Binding var dateRange: LapsView.DateRange
+    @Binding var showFilters: Bool
+    
+    let circuits: [Circuit]
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Text("Filters")
+                    .font(.headline)
+                    .foregroundStyle(Theme.text)
+                Spacer()
+                Button {
+                    showFilters = false
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(Theme.secondaryText)
+                }
+            }
+            
+            VStack(alignment: .leading, spacing: 8) {
+                // Circuit picker
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Circuit")
+                        .font(.caption)
+                        .foregroundStyle(Theme.secondaryText)
+                    Picker("Circuit", selection: $circuitID) {
+                        Text("All").tag(nil as UUID?)
+                        ForEach(circuits) { c in Text(c.name).tag(c.id as UUID?) }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(Theme.text)
+                }
+                
+                // Activity picker
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Activity")
+                        .font(.caption)
+                        .foregroundStyle(Theme.secondaryText)
+                    Picker("Activity", selection: $activity) {
+                        Text("All").tag(nil as ActivityType?)
+                        ForEach(ActivityType.allCases, id: \.self) { type in
+                            Text(type.displayName).tag(type as ActivityType?)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(Theme.text)
+                }
+                
+                // Date range picker
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Date")
+                        .font(.caption)
+                        .foregroundStyle(Theme.secondaryText)
+                    Picker("Date Range", selection: $dateRange) {
+                        ForEach(LapsView.DateRange.allCases) { range in
+                            Text(range.rawValue).tag(range)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(Theme.text)
+                }
+            }
+        }
+        .padding()
+        .background(Theme.background)
+        .cornerRadius(12)
     }
 }
