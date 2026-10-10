@@ -77,7 +77,7 @@ jobs:
         run: |
           set -euo pipefail
           # Get available devices in JSON format
-          DEVICES_JSON="$(xcrun simctl list devices available -j)"
+          export DEVICES_JSON="$(xcrun simctl list devices available -j)"
           # Write Python script to a temporary file
           TMPPY=$(mktemp)
           echo "import json, sys, os" > "$TMPPY"
