@@ -72,6 +72,21 @@ jobs:
             -project "$PROJECT_PATH" \
             -scheme "$SCHEME"
 
+
+      - name: Debug Swift Packages
+        run: |
+          set -euo pipefail
+          SWIFTC=$(xcodebuild -find swiftc 2>/dev/null | head -1)
+          if [ -z "$SWIFTC" ]; then
+            echo "Could not find swiftc via xcodebuild -find"
+            SWIFTC=$(which swiftc)
+          fi
+          echo "Using swiftc: $SWIFTC"
+          cat > /tmp/test_import.swift << 'EOF'
+          import SwiftCharts
+          print("SwiftCharts imported successfully")
+          EOF
+          "$SWIFTC" /tmp/test_import.swift -o /tmp/test_import 2>&1
       - name: Select simulator destination
         id: sim
         run: |
