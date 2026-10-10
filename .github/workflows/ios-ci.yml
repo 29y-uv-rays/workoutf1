@@ -80,25 +80,23 @@ jobs:
           DEVICES_JSON="$(xcrun simctl list devices available -j)"
           # Write Python script to a temporary file
           TMPPY=$(mktemp)
-          cat > "$TMPPY" <<'END'
-import json, sys, os
-data = json.loads(os.environ['DEVICES_JSON'])
-devices = data.get('devices', [])
-candidates = []
-for runtime, devlist in devices.items():
-    for d in devlist:
-        if d.get('isAvailable', False) and 'iPhone' in d.get('name', ''):
-            candidates.append((d['name'], d['udid'], d.get('isEnabled', True)))
-enabled = [c for c in candidates if c[2]]
-if enabled:
-    name, udid, _ = enabled[0]
-elif candidates:
-    name, udid, _ = candidates[0]
-else:
-    print("No available iPhone simulator found", file=sys.stderr)
-    sys.exit(1)
-print(f"platform=iOS Simulator,UDID={udid}")
-END
+          echo "import json, sys, os" > "$TMPPY"
+          echo "data = json.loads(os.environ['DEVICES_JSON'])" >> "$TMPPY"
+          echo "devices = data.get('devices', [])" >> "$TMPPY"
+          echo "candidates = []" >> "$TMPPY"
+          echo "for runtime, devlist in devices.items():" >> "$TMPPY"
+          echo "    for d in devlist:" >> "$TMPPY"
+          echo "        if d.get('isAvailable', False) and 'iPhone' in d.get('name', ''):" >> "$TMPPY"
+          echo "            candidates.append((d['name'], d['udid'], d.get('isEnabled', True)))" >> "$TMPPY"
+          echo "enabled = [c for c in candidates if c[2]]" >> "$TMPPY"
+          echo "if enabled:" >> "$TMPPY"
+          echo "    name, udid, _ = enabled[0]" >> "$TMPPY"
+          echo "elif candidates:" >> "$TMPPY"
+          echo "    name, udid, _ = candidates[0]" >> "$TMPPY"
+          echo "else:" >> "$TMPPY"
+          echo "    print('No available iPhone simulator found', file=sys.stderr)" >> "$TMPPY"
+          echo "    sys.exit(1)" >> "$TMPPY"
+          echo "print(f'platform=iOS Simulator,UDID={udid}')" >> "$TMPPY"
           DESTINATION="$(python3 "$TMPPY")"
           rm -f "$TMPPY"
           if [ -z "$DESTINATION" ]; then
@@ -113,6 +111,7 @@ END
           fi
           echo "destination=$DESTINATION" >> "$GITHUB_OUTPUT"
           echo "Using destination: $DESTINATION"
+
       - name: Build for iOS Simulator
         run: |
           set -euo pipefail
