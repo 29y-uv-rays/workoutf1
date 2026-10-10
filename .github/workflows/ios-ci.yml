@@ -104,9 +104,10 @@ jobs:
           echo "candidates.sort(key=lambda x: (-x[0], x[1]))" >> "$TMPPY"
           echo "# Extract just the device info after sorting" >> "$TMPPY"
           echo "_, name, udid, _ = candidates[0]" >> "$TMPPY"
-          echo "print(f'platform=iOS Simulator,UDID={udid}')" >> "$TMPPY"
-          rm -f "$TMPPY"
-          if [ -z "$DESTINATION" ]; then
+           echo "print(f'platform=iOS Simulator,UDID={udid}')" >> "$TMPPY"
+           DESTINATION=$(python3 "$TMPPY")
+           rm -f "$TMPPY"
+           if [ -z "$DESTINATION" ]; then
             echo "No available iPhone simulator found"
             echo "Xcode version:"
             xcodebuild -version
