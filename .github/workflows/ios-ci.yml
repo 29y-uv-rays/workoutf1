@@ -1,0 +1,99 @@
+name: iOS CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: macos-14
+    env:
+      PROJECT_PATH: APEX/APEX.xcodeproj
+      SCHEME: APEX
+      DERIVED_DATA: ${{ github.workspace }}/DerivedData
+      RESULT_BUNDLE_DIR: ${{ github.workspace }}/ci_results
+      LOG_DIR: ${{ github.workspace }}/ci_logs
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          XCODE_VERSION="$(xcodebuild -version | awk '/Xcode/{print $2}')"
+          if [ "${XCODE_VERSION%%.*}" -lt 15 ]; then
+            echo "Xcode 15+ is required for Swift 5.9/iOS 17 deployment target"
+            exit 1
+          fi
+
+      - name: Validate project and scheme
+        run: |
+          set -euo pipefail
+          xcodebuild -list -project "$PROJECT_PATH"
+          xcodebuild -list -project "$PROJECT_PATH" | grep -F "${SCHEME}" >/dev/null
+
+      - name: Resolve Swift package dependencies
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -resolvePackageDependencies \
+            -project "$PROJECT_PATH" \
+            -scheme "$SCHEME"
+
+      - name: Select simulator destination
+        id: sim
+        run: |
+          set -euo pipefail
+          DESTINATION_NAME="$(xcrun simctl list devices available | sed -n 's/^[[:space:]]*\(iPhone[^()]\+\) (.*$/\1/p' | head -n 1)"
+          if [ -z "$DESTINATION_NAME" ]; then
+            echo "No available iPhone simulator found"
+            exit 1
+          fi
+          echo "destination=platform=iOS Simulator,name=${DESTINATION_NAME}" >> "$GITHUB_OUTPUT"
+          echo "Using destination: platform=iOS Simulator,name=${DESTINATION_NAME}"
+
+      - name: Build for iOS Simulator
+        run: |
+          set -euo pipefail
+          mkdir -p "$RESULT_BUNDLE_DIR" "$LOG_DIR"
+          xcodebuild \
+            -project "$PROJECT_PATH" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -destination "${{ steps.sim.outputs.destination }}" \
+            -derivedDataPath "$DERIVED_DATA" \
+            -resultBundlePath "$RESULT_BUNDLE_DIR/build.xcresult" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build | tee "$LOG_DIR/build.log"
+
+      - name: Run unit tests
+        run: |
+          set -euo pipefail
+          mkdir -p "$RESULT_BUNDLE_DIR" "$LOG_DIR"
+          xcodebuild \
+            -project "$PROJECT_PATH" \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -destination "${{ steps.sim.outputs.destination }}" \
+            -derivedDataPath "$DERIVED_DATA" \
+            -resultBundlePath "$RESULT_BUNDLE_DIR/tests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            test | tee "$LOG_DIR/test.log"
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ci-diagnostics
+          if-no-files-found: warn
+          path: |
+            ${{ env.LOG_DIR }}/*.log
+            ${{ env.RESULT_BUNDLE_DIR }}/*.xcresult
