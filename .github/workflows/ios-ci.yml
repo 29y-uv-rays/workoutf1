@@ -76,14 +76,41 @@ jobs:
         id: sim
         run: |
           set -euo pipefail
-          DESTINATION_NAME="$(xcrun simctl list devices available | sed -n 's/^[[:space:]]*\(iPhone[^()]\+\) (.*$/\1/p' | head -n 1)"
-          if [ -z "$DESTINATION_NAME" ]; then
+          # Get available devices in JSON format
+          DEVICES_JSON="$(xcrun simctl list devices available -j)"
+          # Use Python to find an iPhone simulator
+          DESTINATION="$(python3 <<'ENDPY'
+import json, sys, os
+data = json.loads(os.environ['DEVICES_JSON'])
+devices = data.get('devices', [])
+candidates = []
+for runtime, devlist in devices.items():
+    for d in devlist:
+        if d.get('isAvailable', False) and 'iPhone' in d.get('name', ''):
+            candidates.append((d['name'], d['udid'], d.get('isEnabled', True)))
+enabled = [c for c in candidates if c[2]]
+if enabled:
+    name, udid, _ = enabled[0]
+elif candidates:
+    name, udid, _ = candidates[0]
+else:
+    print("No available iPhone simulator found", file=sys.stderr)
+    sys.exit(1)
+print(f"platform=iOS Simulator,UDID={udid}")
+ENDPY
+)"
+          if [ -z "$DESTINATION" ]; then
             echo "No available iPhone simulator found"
+            echo "Xcode version:"
+            xcodebuild -version
+            echo "Available iOS runtimes:"
+            xcrun simctl list runtimes
+            echo "All devices:"
+            xcrun simctl list devices
             exit 1
           fi
-          echo "destination=platform=iOS Simulator,name=${DESTINATION_NAME}" >> "$GITHUB_OUTPUT"
-          echo "Using destination: platform=iOS Simulator,name=${DESTINATION_NAME}"
-
+          echo "destination=$DESTINATION" >> "$GITHUB_OUTPUT"
+          echo "Using destination: $DESTINATION"
       - name: Build for iOS Simulator
         run: |
           set -euo pipefail
