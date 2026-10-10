@@ -78,8 +78,9 @@ jobs:
           set -euo pipefail
           # Get available devices in JSON format
           DEVICES_JSON="$(xcrun simctl list devices available -j)"
-          # Use Python to find an iPhone simulator
-          DESTINATION="$(python3 <<'ENDPY'
+          # Write Python script to a temporary file
+          TMPPY=$(mktemp)
+          cat > "$TMPPY" <<'END'
 import json, sys, os
 data = json.loads(os.environ['DEVICES_JSON'])
 devices = data.get('devices', [])
@@ -97,8 +98,9 @@ else:
     print("No available iPhone simulator found", file=sys.stderr)
     sys.exit(1)
 print(f"platform=iOS Simulator,UDID={udid}")
-ENDPY
-)"
+END
+          DESTINATION="$(python3 "$TMPPY")"
+          rm -f "$TMPPY"
           if [ -z "$DESTINATION" ]; then
             echo "No available iPhone simulator found"
             echo "Xcode version:"
