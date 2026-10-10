@@ -144,7 +144,12 @@ struct LapRow: View {
     }
 
     private func sectorResult(for sectorIndex: Int) -> SectorResult? {
-        let desc = FetchDescriptor<SectorResult>(predicate: #Predicate { $0.workouUUID == workout.sourceWorkoutUUID && $0.sectorIndex == sectorIndex })
+        let desc = FetchDescriptor<SectorResult>(
+            predicate: #Predicate { sectorResult in
+                sectorResult.workouUUID == workout.sourceWorkoutUUID &&
+                sectorResult.sectorIndex == sectorIndex
+            }
+        )
         return (try? modelContext.fetch(desc)).flatMap { $0.first }
     }
 }

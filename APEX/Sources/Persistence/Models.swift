@@ -1,5 +1,6 @@
 import SwiftData
 import Foundation
+import CoreLocation
 
 // MARK: - Workout
 
@@ -190,7 +191,15 @@ extension Workout {
         let version = circuit.version
         let algorithm = TimingEngine.algorithmVersion
         let valid = TimingStatus.valid.rawValue
-        let desc = FetchDescriptor<Workout>(predicate: #Predicate { w in w.circuit?.id == circuitID && w.timingStatusRaw == valid && w.circuitVersion == version && w.algorithmVersion == algorithm }, sortBy: [SortDescriptor(\.startDate)])
+        let desc = FetchDescriptor<Workout>(
+            predicate: #Predicate { workout in
+                workout.circuit?.id == circuitID &&
+                workout.timingStatusRaw == valid &&
+                workout.circuitVersion == version &&
+                workout.algorithmVersion == algorithm
+            },
+            sortBy: [SortDescriptor(\.startDate)]
+        )
         return (try? modelContext.fetch(desc)) ?? []
     }
 

@@ -168,14 +168,26 @@ enum DebriefBuilder {
     }
 
     private static func sectorResult(for workout: Workout, sectorIndex: Int, modelContext: ModelContext) -> SectorResult? {
-        let desc = FetchDescriptor<SectorResult>(predicate: #Predicate { r in r.workouUUID == workout.sourceWorkoutUUID && r.sectorIndex == sectorIndex })
+        let desc = FetchDescriptor<SectorResult>(
+            predicate: #Predicate { sectorResult in
+                sectorResult.workouUUID == workout.sourceWorkoutUUID &&
+                sectorResult.sectorIndex == sectorIndex
+            }
+        )
         return ((try? modelContext.fetch(desc)) ?? []).first
     }
 
     private static func recentLaps(_ workout: Workout, modelContext: ModelContext) -> [String] {
         guard let circuit = workout.circuit else { return [] }
         let circuitID = circuit.id
-        let desc = FetchDescriptor<Workout>(predicate: #Predicate { w in w.circuit?.id == circuitID && w.timingStatusRaw == TimingStatus.valid.rawValue && w.startDate < workout.startDate }, sortBy: [SortDescriptor(\.startDate, order: .reverse)])
+        let desc = FetchDescriptor<Workout>(
+            predicate: #Predicate { workout in
+                workout.circuit?.id == circuitID &&
+                workout.timingStatusRaw == TimingStatus.valid.rawValue &&
+                workout.startDate < workout.startDate
+            },
+            sortBy: [SortDescriptor(\.startDate, order: .reverse)]
+        )
         let laps = (try? modelContext.fetch(desc)) ?? []
         return Array(laps.prefix(5)).map { w in
             let lt = w.lapTimeSeconds.map(TimeFormat.absolute) ?? "—"
@@ -201,7 +213,14 @@ enum DebriefBuilder {
     private static func deltasToPrevious(_ workout: Workout, modelContext: ModelContext) -> [String] {
         guard let circuit = workout.circuit else { return [] }
         let circuitID = circuit.id
-        let desc = FetchDescriptor<Workout>(predicate: #Predicate { w in w.circuit?.id == circuitID && w.timingStatusRaw == TimingStatus.valid.rawValue && w.startDate < workout.startDate }, sortBy: [SortDescriptor(\.startDate, order: .reverse)])
+        let desc = FetchDescriptor<Workout>(
+            predicate: #Predicate { workout in
+                workout.circuit?.id == circuitID &&
+                workout.timingStatusRaw == TimingStatus.valid.rawValue &&
+                workout.startDate < workout.startDate
+            },
+            sortBy: [SortDescriptor(\.startDate, order: .reverse)]
+        )
         let prevLaps = (try? modelContext.fetch(desc)) ?? []
         guard let prev = prevLaps.first else { return [] }
         var deltas: [String] = []

@@ -238,7 +238,12 @@ struct LapDetailView: View {
     // MARK: - Helpers
 
     private func sectorResult(for sectorIndex: Int) -> SectorResult? {
-        let desc = FetchDescriptor<SectorResult>(predicate: #Predicate { $0.workouUUID == workout.sourceWorkoutUUID && $0.sectorIndex == sectorIndex })
+        let desc = FetchDescriptor<SectorResult>(
+            predicate: #Predicate { sectorResult in
+                sectorResult.workouUUID == workout.sourceWorkoutUUID &&
+                sectorResult.sectorIndex == sectorIndex
+            }
+        )
         return (try? modelContext.fetch(desc)).flatMap { $0.first }
     }
 
@@ -251,7 +256,12 @@ struct LapDetailView: View {
         let laps = Workout.fetchValidLaps(for: circuit, modelContext: modelContext)
         var best: Double?
         for w in laps {
-            let desc = FetchDescriptor<SectorResult>(predicate: #Predicate { $0.workouUUID == w.sourceWorkoutUUID && $0.sectorIndex == sectorIndex })
+            let desc = FetchDescriptor<SectorResult>(
+                predicate: #Predicate { sectorResult in
+                    sectorResult.workouUUID == w.sourceWorkoutUUID &&
+                    sectorResult.sectorIndex == sectorIndex
+                }
+            )
             if let r = (try? modelContext.fetch(desc)).flatMap({ $0.first }), let d = r.durationSeconds {
                 if best == nil || d < best! { best = d }
             }
@@ -261,7 +271,12 @@ struct LapDetailView: View {
 
     private func previousSectorTime(for sectorIndex: Int) -> Double? {
         guard let prev = previousLap() else { return nil }
-        let desc = FetchDescriptor<SectorResult>(predicate: #Predicate { $0.workouUUID == prev.sourceWorkoutUUID && $0.sectorIndex == sectorIndex })
+        let desc = FetchDescriptor<SectorResult>(
+            predicate: #Predicate { sectorResult in
+                sectorResult.workouUUID == prev.sourceWorkoutUUID &&
+                sectorResult.sectorIndex == sectorIndex
+            }
+        )
         return (try? modelContext.fetch(desc)).flatMap { $0.first }?.durationSeconds
     }
 
@@ -271,12 +286,25 @@ struct LapDetailView: View {
         let algorithm = TimingEngine.algorithmVersion
         let valid = TimingStatus.valid.rawValue
         let before = workout.startDate
-        let desc = FetchDescriptor<Workout>(predicate: #Predicate { w in w.circuit?.id == circuitID && w.timingStatusRaw == valid && w.circuitVersion == version && w.algorithmVersion == algorithm && w.startDate < before }, sortBy: [SortDescriptor(\.startDate, order: .reverse)])
+        let desc = FetchDescriptor<Workout>(
+            predicate: #Predicate { workout in
+                workout.circuit?.id == circuitID &&
+                workout.timingStatusRaw == valid &&
+                workout.circuitVersion == version &&
+                workout.algorithmVersion == algorithm &&
+                workout.startDate < before
+            },
+            sortBy: [SortDescriptor(\.startDate, order: .reverse)]
+        )
         return (try? modelContext.fetch(desc)).flatMap { $0.first }
     }
 
     private var debrief: RaceEngineerDebrief? {
-        let desc = FetchDescriptor<RaceEngineerDebrief>(predicate: #Predicate { $0.workouUUID == workout.sourceWorkoutUUID })
+        let desc = FetchDescriptor<RaceEngineerDebrief>(
+            predicate: #Predicate { debrief in
+                debrief.workouUUID == workout.sourceWorkoutUUID
+            }
+        )
         return (try? modelContext.fetch(desc)).flatMap { $0.first }
     }
 

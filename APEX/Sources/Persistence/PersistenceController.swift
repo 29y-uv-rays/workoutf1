@@ -1,7 +1,8 @@
 import SwiftData
 import Foundation
+import SwiftUI
 
-final class PersistenceController: Sendable {
+final class PersistenceController: Sendable, ObservableObject {
     static let shared = PersistenceController()
 
     let container: ModelContainer

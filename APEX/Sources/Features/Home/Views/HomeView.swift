@@ -1,11 +1,12 @@
 import SwiftUI
 import SwiftData
+import MapKit
 
 struct HomeView: View {
     @Environment(PersistenceController.self) private var persistence
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Workout.startDate, order: .reverse) private var workouts: [Workout]
-    @Query(filter: #Predicate<AppStateModel> { _ in true }, limit: 1) private var appStateRows: [AppStateModel]
+    @Query(filter: #Predicate<AppStateModel> { _ in true }) private var appStateRows: [AppStateModel]
     @State private var settingsOpen = false
     @State private var isRefreshing = false
     @State private var lastSyncText = "Not yet synced"
@@ -187,7 +188,12 @@ struct HomeView: View {
     }
 
     private func sectorResult(for w: Workout, sectorIndex: Int) -> SectorResult? {
-        let desc = FetchDescriptor<SectorResult>(predicate: #Predicate { $0.workouUUID == w.sourceWorkoutUUID && $0.sectorIndex == sectorIndex })
+        let desc = FetchDescriptor<SectorResult>(
+            predicate: #Predicate { sectorResult in
+                sectorResult.workouUUID == w.sourceWorkoutUUID &&
+                sectorResult.sectorIndex == sectorIndex
+            }
+        )
         return (try? modelContext.fetch(desc)).flatMap { $0.first }
     }
 
@@ -297,7 +303,11 @@ struct HomeView: View {
     }
 
     private func debrief(for w: Workout) -> RaceEngineerDebrief? {
-        let desc = FetchDescriptor<RaceEngineerDebrief>(predicate: #Predicate { $0.workouUUID == w.sourceWorkoutUUID })
+        let desc = FetchDescriptor<RaceEngineerDebrief>(
+            predicate: #Predicate { debrief in
+                debrief.workouUUID == w.sourceWorkoutUUID
+            }
+        )
         return (try? modelContext.fetch(desc)).flatMap { $0.first }
     }
 

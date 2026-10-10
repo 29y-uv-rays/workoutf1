@@ -5,7 +5,7 @@ struct SettingsView: View {
     @Binding var isPresented: Bool
     @Environment(PersistenceController.self) private var persistence
     @Environment(\.modelContext) private var modelContext
-    @Query(filter: #Predicate<AppStateModel> { _ in true }, limit: 1) private var appStateRows: [AppStateModel]
+    @Query(filter: #Predicate<AppStateModel> { _ in true }) private var appStateRows: [AppStateModel]
     @State private var viewModel: SettingsViewModel?
     @State private var showGPSGuide = false
 

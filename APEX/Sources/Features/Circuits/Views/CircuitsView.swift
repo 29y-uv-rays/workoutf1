@@ -74,14 +74,25 @@ struct CircuitRow: View {
     private func lapCount(_ c: Circuit) -> Int {
         let circuitID = c.id
         let valid = TimingStatus.valid.rawValue
-        let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.circuit?.id == circuitID && $0.timingStatusRaw == valid })
+        let desc = FetchDescriptor<Workout>(
+            predicate: #Predicate { workout in
+                workout.circuit?.id == circuitID &&
+                workout.timingStatusRaw == valid
+            }
+        )
         return (try? persistence.container.mainContext.fetch(desc).count) ?? 0
     }
 
     private func bestLapTime(_ c: Circuit) -> Double? {
         let circuitID = c.id
         let valid = TimingStatus.valid.rawValue
-        let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.circuit?.id == circuitID && $0.timingStatusRaw == valid && $0.lapTimeSeconds != nil })
+        let desc = FetchDescriptor<Workout>(
+            predicate: #Predicate { workout in
+                workout.circuit?.id == circuitID &&
+                workout.timingStatusRaw == valid &&
+                workout.lapTimeSeconds != nil
+            }
+        )
         return (try? persistence.container.mainContext.fetch(desc)).flatMap { $0.compactMap(\.lapTimeSeconds).min() }
     }
 }
